@@ -76,7 +76,7 @@ class Message:
         return self.message.iter_attachments()
 
     def __str__(self):
-        return f'{self.sent} {self.sender:<100} {self.subject}'
+        return f'{self.sent} {self.sender:<50} {self.subject}'
 
 
 def strip_illegal_char(input_string):
