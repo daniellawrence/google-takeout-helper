@@ -4,13 +4,9 @@ Module for extracting all attachments from an mbox archive.
 
 rework of https://github.com/treymo/google-takeout-helper
 """
- 
-import argparse   
-import sys
-import mailbox
+import argparse
 import os
 import re
-import time
 import datetime
 import email
 import pathlib
@@ -18,7 +14,7 @@ from email.policy import default
 
 
 class MboxReader:
-    """ lifted from https://stackoverflow.com/questions/59681461/read-a-big-mbox-file-with-python. """
+    """ lifted from https://stackoverflow.com/questions/59681461 """
     def __init__(self, filename):
         self.handle = open(filename, 'rb')
         assert self.handle.readline().startswith(b'From ')
@@ -37,7 +33,8 @@ class MboxReader:
         while True:
             line = self.handle.readline()
             if line == b'' or line.startswith(b'From '):
-                yield email.message_from_bytes(b''.join(lines), policy=default)
+                yield email.message_from_bytes(b''.join(lines),
+                                               policy=default)
                 if line == b'':
                     break
                 lines = []
@@ -48,17 +45,17 @@ class MboxReader:
 class Message:
     def __init__(self, message):
         self.message = message
-    
+
     @property
     def subject(self):
         return self.message.get('subject', '')
-    
+
     def is_spam(self, ignore_labels=['Spam']):
         for label in ignore_labels:
-             if label in self.message.get('X-Gmail-Labels', ''):
+            if label in self.message.get('X-Gmail-Labels', ''):
                 return True
         return False
-    
+
     @property
     def has_attachment(self):
         return self.message.is_multipart()
@@ -98,7 +95,7 @@ def extract_mail_attachments(mbox_file_path, ignore_labels, output_directory):
 
             if not message.has_attachment:
                 continue
-                
+
             if not message.sender or not message.subject or not message.sent:
                 continue
 
@@ -115,9 +112,10 @@ def extract_mail_attachments(mbox_file_path, ignore_labels, output_directory):
                 with open(p, 'wb') as a:
                     try:
                         a.write(attachment.get_payload(decode=True))
-                    except Exception as e:
+                    except Exception:
                         continue
                 print(f'    {p}')
+
 
 def main():
     parser = argparse.ArgumentParser(description='Extract all the attachments from a mbox file.')
