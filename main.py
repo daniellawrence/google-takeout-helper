@@ -4,7 +4,8 @@ Module for extracting all attachments from an mbox archive.
 
 rework of https://github.com/treymo/google-takeout-helper
 """
-    
+ 
+import argparse   
 import sys
 import mailbox
 import os
@@ -12,6 +13,7 @@ import re
 import time
 import datetime
 import email
+import pathlib
 from email.policy import default
 
 
@@ -42,6 +44,7 @@ class MboxReader:
                 continue
             lines.append(line)
 
+
 class Message:
     def __init__(self, message):
         self.message = message
@@ -50,9 +53,11 @@ class Message:
     def subject(self):
         return self.message.get('subject', '')
     
-    @property
-    def is_spam(self):
-        return 'Spam' in self.message.get('X-Gmail-Labels', '')
+    def is_spam(self, ignore_labels=['Spam']):
+        for label in ignore_labels:
+             if label in self.message.get('X-Gmail-Labels', ''):
+                return True
+        return False
     
     @property
     def has_attachment(self):
@@ -83,12 +88,12 @@ def strip_illegal_char(input_string):
     return re.sub(r'[\<,\>,\:,\",\/,\\,\|,\?,\*,\n,\t]', '', str(input_string))
 
 
-def extract_mail_attachments(mbox_file_path):
+def extract_mail_attachments(mbox_file_path, ignore_labels, output_directory):
     with MboxReader(mbox_file_path) as mbox:
         for message in mbox:
             message = Message(message)
 
-            if message.is_spam:
+            if message.is_spam(ignore_labels):
                 continue
 
             if not message.has_attachment:
@@ -104,7 +109,7 @@ def extract_mail_attachments(mbox_file_path):
                 if not filename:
                     continue
                 filename = strip_illegal_char(filename)
-                d = os.path.join(f'{mbox_file_path}_attachments', message.sent)
+                d = os.path.join(output_directory, message.sent)
                 p = os.path.join(d, f'{message.sent}--{message.sender}--{filename}')
                 os.makedirs(d, exist_ok=True)
                 with open(p, 'wb') as a:
@@ -114,5 +119,15 @@ def extract_mail_attachments(mbox_file_path):
                         continue
                 print(f'    {p}')
 
+def main():
+    parser = argparse.ArgumentParser(description='Extract all the attachments from a mbox file.')
+    parser.add_argument('-i', '--ignore-labels', metavar='label', type=str, nargs='*', default=['spam'])
+    parser.add_argument('-o', '--output-directory', metavar='attachments', type=pathlib.Path, help='directory to store all the attachments found in your mbox', default='attachments')
+    parser.add_argument('mbox_file_path', metavar='/path/to/your/mail.mbox', type=pathlib.Path, help='path to your mbox file')
+    args = parser.parse_args()
+    print(args)
+    extract_mail_attachments(args.mbox_file_path, args.ignore_labels, args.output_directory)
+
+
 if __name__ == '__main__':
-    extract_mail_attachments(sys.argv[1])
+    main()
